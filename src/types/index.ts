@@ -366,3 +366,32 @@ export interface UsersState {
   isloading: boolean;
   isaddLoading: boolean;
 }
+
+
+// music type response
+export interface MusicState {
+  id: string,
+  title: string,
+  thumbnail: string,
+  channelTitle: string
+}
+
+export type MusicSyncAction = "select" | "play" | "pause" | "seek";
+
+export interface MusicSyncState {
+  roomId: string;
+  song: MusicState | null;
+  isPlaying: boolean;
+  /**
+   * Playback position (seconds) at `updatedAtMs`.
+   */
+  positionSec: number;
+  /**
+   * Server timestamp (ms) when state was updated.
+   */
+  updatedAtMs: number;
+  /**
+   * What caused the last update.
+   */
+  action: MusicSyncAction;
+}

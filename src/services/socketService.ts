@@ -2,9 +2,10 @@ import io, { Socket } from "socket.io-client";
 import toast from "react-hot-toast";
 import properties from "@/config/properties";
 import { Reaction, Message } from "@/types";
+import { MusicState, MusicSyncState } from "@/types";
 
 // Socket setup
-export const socket: Socket = io(properties.PUBLIC_SOCKET_BASE_URL, {
+export const socket: Socket = io(properties.PRIVATE_SOCKET_BASE_URL, {
   transports: ["websocket"],
   reconnection: true,
   reconnectionDelay: 1000,
@@ -108,6 +109,35 @@ export const socketHandlers = {
       return;
     }
     socket.emit("leave_group", { groupId, userId });
+  },
+
+  playMusic: (senderId: string, receiverId: string, music: MusicState) => {
+    if(!socket.connected){
+      toast.error("Socket is not connected - Cannot play music");
+      return;
+    }
+    socket.emit("music:select", { senderId, receiverId, song: music })
+  },
+  pauseMusic: (senderId: string, receiverId: string, positionSec: number) => {
+    if(!socket.connected){
+      toast.error("Socket is not connected - Cannot pause music");
+      return;
+    }
+    socket.emit("music:pause", { senderId, receiverId, positionSec })
+  },
+  resumeMusic: (senderId: string, receiverId: string, positionSec: number) => {
+    if(!socket.connected){
+      toast.error("Socket is not connected - Cannot play music");
+      return;
+    }
+    socket.emit("music:play", { senderId, receiverId, positionSec })
+  },
+  seekMusic: (senderId: string, receiverId: string, positionSec: number) => {
+    if(!socket.connected){
+      toast.error("Socket is not connected - Cannot seek music");
+      return;
+    }
+    socket.emit("music:seek", { senderId, receiverId, positionSec })
   }
 };
 
@@ -213,6 +243,19 @@ export const setupSocketListeners = (
     );
   });
 };
+
+
+export const setUpMusicListeners = (
+  onState: (state: MusicSyncState) => void
+ ) => {
+  socket.on("music:state", (state: MusicSyncState) => {
+    onState(state);
+  });
+}
+
+export const cleanupSocketMusicListerns = () => {
+  socket.off("music:state")
+}
 
 // Cleanup socket listeners
 export const cleanupSocketListeners = () => {
