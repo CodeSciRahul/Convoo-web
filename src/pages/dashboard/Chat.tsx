@@ -98,6 +98,8 @@ const Chat: React.FC = () => {
           fileUrl: msg?.fileUrl,
           fileType: msg?.fileType,
           timestamp: msg?.createdAt,
+          deliveredAt: (msg as any)?.deliveredAt ?? null,
+          seenAt: (msg as any)?.seenAt ?? null,
           groupId: msg?.groupId,
           messageType: msg?.messageType,
           replyTo: msg?.replyTo
@@ -208,6 +210,29 @@ const Chat: React.FC = () => {
     };
   }, []);
 
+  // Mark incoming messages as seen when chat is open (private chats)
+  useEffect(() => {
+    if (selectionType !== "user") return;
+    if (!userId || !selectedReceiverId) return;
+    if (!messages || messages.length === 0) return;
+
+    const unseenIncoming = messages
+      .filter(
+        (m) =>
+          m.senderId === selectedReceiverId &&
+          m.receiverId === userId &&
+          !(m as any).seenAt
+      )
+      .map((m) => m._id);
+
+    if (unseenIncoming.length === 0) return;
+    socketHandlers.markSeen({
+      messageIds: unseenIncoming,
+      viewerId: userId,
+      otherUserId: selectedReceiverId,
+    });
+  }, [messages, selectionType, userId, selectedReceiverId]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -263,6 +288,32 @@ const Chat: React.FC = () => {
       return;
     }
 
+    // Optimistic UI like WhatsApp/Instagram
+    const clientMessageId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+    setMessages((prev) => [
+      ...prev,
+      ({
+        _id: clientMessageId,
+        senderId: userId!,
+        senderName: userName || "",
+        receiverId: selectionType === "group" ? "" : selectedReceiverId!,
+        content: message.trim(),
+        fileUrl: undefined,
+        fileType: undefined,
+        timestamp: new Date().toISOString(),
+        deliveredAt: null,
+        seenAt: null,
+        groupId: selectionType === "group" ? selectedReceiverId : undefined,
+        messageType: selectionType === "group" ? "group" : "private",
+        replyTo: null,
+        reactions: [],
+      } as any),
+    ]);
+
     socketHandlers.sendMessage({
       senderId: userId!,
       receiverId: selectionType === "group" ? undefined : selectedReceiverId,
@@ -270,6 +321,7 @@ const Chat: React.FC = () => {
       content: message.trim(),
       messageType: selectionType === "group" ? "group" : "private",
       replyTo: replyToMessage?._id || undefined,
+      clientMessageId,
     });
 
     setMessage("");
@@ -548,10 +600,25 @@ const Chat: React.FC = () => {
                         : "text-slate-400"
                     }`}
                   >
-                    {new Date(msg.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    <span>
+                      {new Date(msg.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    {msg?.senderId === userId && selectionType === "user" && (
+                      <span className="ml-2 inline-flex items-center">
+                        {!(msg as any)?.deliveredAt && !(msg as any)?.seenAt && (
+                          <span className="text-blue-100">✓</span>
+                        )}
+                        {!!(msg as any)?.deliveredAt && !(msg as any)?.seenAt && (
+                          <span className="text-blue-100">✓✓</span>
+                        )}
+                        {!!(msg as any)?.seenAt && (
+                          <span className="text-red-300">✓✓</span>
+                        )}
+                      </span>
+                    )}
                   </p>
                 </div>
                 {msg?.reactions && (

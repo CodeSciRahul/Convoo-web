@@ -2,8 +2,16 @@ import { Sidebar } from "@/components/sidebar";
 import { Outlet } from "react-router-dom";
 import { ErrorBoundary } from "react-error-boundary";
 import FallbackUI from "@/components/fallbackUI";
+import { useEffect } from "react";
+import { useAppSelecter } from "@/Redux/Hooks/store";
+import { initPresence } from "@/services/socketService";
 
 export default function Dashboard() {
+  const userId = useAppSelecter((state) => state.auth.user?._id);
+
+  useEffect(() => {
+    if (userId) initPresence(userId);
+  }, [userId]);
 
   return (
     <>

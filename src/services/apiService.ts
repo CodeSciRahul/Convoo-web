@@ -83,4 +83,6 @@ export function updateGroup(groupId: string, data: UpdateGroupData){
   return http.put(`/groups/${groupId}`, data);
 }
 
-
+export function getSongs(searchQuery: string){
+  return http.get(`/music?searchQuery=${searchQuery}`)
+}

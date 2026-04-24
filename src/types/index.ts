@@ -88,6 +88,14 @@ export interface Receiver {
   email: string;
   mobile: string;
   profilePic?: string;
+  lastMessage?: {
+    _id: string;
+    content?: string;
+    fileUrl?: string | null;
+    fileType?: string | null;
+    createdAt?: string;
+    messageType?: "private" | "group" | null;
+  } | null;
 }
 
 export type Receivers = Receiver[];
@@ -124,6 +132,8 @@ export interface Message {
   fileUrl?: string;
   fileType?: string;
   timestamp: string;
+  deliveredAt?: string | null;
+  seenAt?: string | null;
   groupId?: string
   messageType?: "private" | "group" | null
   replyTo?: Message | null
@@ -148,6 +158,8 @@ export interface ServerMessage {
   timestamp: string;
   createdAt: string;
   updatedAt: string;
+  deliveredAt?: string | null;
+  seenAt?: string | null;
   groupId?: string
   messageType?: "private" | "group" | null
   replyTo?: ServerMessage | null
@@ -365,4 +377,33 @@ export interface UsersState {
   receivers: Receivers | undefined;
   isloading: boolean;
   isaddLoading: boolean;
+}
+
+
+// music type response
+export interface MusicState {
+  id: string,
+  title: string,
+  thumbnail: string,
+  channelTitle: string
+}
+
+export type MusicSyncAction = "select" | "play" | "pause" | "seek";
+
+export interface MusicSyncState {
+  roomId: string;
+  song: MusicState | null;
+  isPlaying: boolean;
+  /**
+   * Playback position (seconds) at `updatedAtMs`.
+   */
+  positionSec: number;
+  /**
+   * Server timestamp (ms) when state was updated.
+   */
+  updatedAtMs: number;
+  /**
+   * What caused the last update.
+   */
+  action: MusicSyncAction;
 }
