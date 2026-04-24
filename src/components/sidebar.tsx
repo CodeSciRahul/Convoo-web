@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "@/Redux/Hooks/store";
 import { selectReciver } from "@/Redux/feature/cartSlice";
@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/popover";
 import { removeUserInfo } from "@/Redux/feature/authSlice";
 import { AlertDialogDemo } from "./modals/AlertModal";
+import { subscribeOnlineUsers } from "@/services/socketService";
+import type { Receiver } from "@/types";
 
 export function Sidebar({ className }: { className?: string }) {
   const [activeState, setActiveState] = useState<string>("");
@@ -51,6 +53,21 @@ export function Sidebar({ className }: { className?: string }) {
   const addUserMutation = useAddUser();
   const createGroupMutation = useCreateGroup();
   const addGroupMemberMutation = useAddGroupMember();
+  const [onlineSet, setOnlineSet] = useState<Set<string>>(new Set());
+
+  const getReceiverSubtitle = (receiver: Receiver) => {
+    const lastMessage = receiver?.lastMessage;
+    if (!lastMessage) return receiver?.email;
+    if (lastMessage?.content?.trim()) return lastMessage.content;
+    if (lastMessage?.fileUrl) return "Attachment";
+    return receiver?.email;
+  };
+
+  // Presence listener (mounted once)
+  useEffect(() => {
+    const unsub = subscribeOnlineUsers((ids) => setOnlineSet(ids));
+    return () => unsub();
+  }, []);
 
   const handleAddUser = async () => {
     const payload = emailOrMobile.includes("@")
@@ -230,11 +247,17 @@ export function Sidebar({ className }: { className?: string }) {
                           {receiver?.name}
                         </h3>
                         <p className="text-xs text-slate-500 truncate">
-                          {receiver?.email}
+                          {getReceiverSubtitle(receiver)}
                         </p>
                       </div>
                       <div className="flex-shrink-0">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            onlineSet.has(receiver?._id)
+                              ? "bg-green-500"
+                              : "bg-slate-300"
+                          }`}
+                        ></div>
                       </div>
                     </div>
                     {activeState === receiver?._id && (

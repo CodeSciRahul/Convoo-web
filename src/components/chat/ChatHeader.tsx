@@ -7,7 +7,7 @@ import { Play, Pause } from 'lucide-react';
 import { useGetMusics } from '@/hooks/useSongs';
 import { MusicState, MusicSyncState } from '@/types';
 import { useDebounce } from '@/hooks/useDebounce';
-import { setUpMusicListeners } from '@/services/socketService';
+import { setUpMusicListeners, subscribeOnlineUsers } from '@/services/socketService';
 import { socketHandlers } from '@/services/socketService';
 import { useAppSelecter } from '@/Redux/Hooks/store';
 
@@ -38,6 +38,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   const [focus, setFocus] = useState(false);
   const [selectedSong, setSelectedSong] = useState<MusicState | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [onlineSet, setOnlineSet] = useState<Set<string>>(new Set());
 
   const senderId = useAppSelecter((state) => state.auth.user?._id)
   const receiverId = useAppSelecter((state) => state?.cart?._id)
@@ -68,10 +69,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
       });
     };
   }, []);
+  // console.log("state1 ", state)
 
   const applyMusicState = (state: MusicSyncState) => {
     setSelectedSong(state.song);
     setIsPlaying(state.isPlaying);
+    console.log("state", state)
 
     if (!playerRef.current || !state.song) return;
 
@@ -101,16 +104,21 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   const handleSelectSong = (song: MusicState) => {
     if (!senderId || !receiverId) return;
     setQuery("");
-    socketHandlers.playMusic(senderId, receiverId, song);
+    socketHandlers.selectMusic(senderId, receiverId, song);
   };
 
   useEffect(() => {
     setUpMusicListeners(applyMusicState);
     return () => {
+      // cleanupSocketMusicListerns()
       // no-op; cleanup in socketService if you want globally
-    };
+    }
   }, [])
 
+  useEffect(() => {
+    const unsub = subscribeOnlineUsers((ids) => setOnlineSet(ids));
+    return () => unsub();
+  }, []);
   const togglePlay = () => {
     if (!playerRef.current || !selectedSong) return;
 
@@ -119,8 +127,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
     if (isPlaying) socketHandlers.pauseMusic(senderId, receiverId, positionSec);
     else socketHandlers.resumeMusic(senderId, receiverId, positionSec);
-  };
-
+  }
+  console.log("selectedSong", selectedSong)
   return (
     <div className="bg-white shadow-sm border-b border-slate-200 px-6 py-4">
       <div className="flex items-center gap-3">
@@ -151,7 +159,15 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
               <h3 className="text-lg font-semibold text-slate-800">
                 {selectedReceiverName || "Select a receiver"}
               </h3>
-              <p className="text-sm text-slate-500">Online</p>
+              {selectionType === "user" && receiverId ? (
+                <p className="text-sm text-slate-500">
+                  {onlineSet.has(String(receiverId)) ? "Online" : "Offline"}
+                </p>
+              ) : selectionType === "group" ? (
+                <p className="text-sm text-slate-500">Group</p>
+              ) : (
+                <p className="text-sm text-slate-500"> </p>
+              )}
             </div>
 
             {/* Group Menu */}
