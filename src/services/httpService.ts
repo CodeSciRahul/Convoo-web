@@ -6,7 +6,7 @@ import { AxiosRequestConfig, AxiosResponse } from 'axios';
 
 // Create custom Axios instance
 const custom_axios = axios.create({
-    baseURL: properties?.PRIVATE_BASE_URL,
+    baseURL: properties?.PUBLIC_BASE_URL,
 });
 
 // Add request interceptor to include Authorization header

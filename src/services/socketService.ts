@@ -42,7 +42,7 @@ type SocketMessageStatusPayload =
   | { messageIds: string[]; deliveredAt?: string | Date | null; seenAt?: string | Date | null };
 
 // Socket setup
-export const socket: Socket = io(properties.PRIVATE_SOCKET_BASE_URL, {
+export const socket: Socket = io(properties.PUBLIC_SOCKET_BASE_URL, {
   transports: ["websocket"],
   reconnection: true,
   reconnectionDelay: 1000,
