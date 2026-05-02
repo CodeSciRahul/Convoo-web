@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "@/Redux/Hooks/store";
 import { selectReciver } from "@/Redux/feature/cartSlice";
-import { useReceivers, useAddUser } from "@/hooks/useReceivers";
+import { useReceivers, useAddUser, useDeleteConversation } from "@/hooks/useReceivers";
 import {
   useGroups,
   useCreateGroup,
@@ -18,7 +18,10 @@ import {
 import { removeUserInfo } from "@/Redux/feature/authSlice";
 import { AlertDialogDemo } from "./modals/AlertModal";
 import { subscribeOnlineUsers } from "@/services/socketService";
+import { socket } from "@/services/socketService";
 import type { Receiver } from "@/types";
+import { useQueryClient } from "@tanstack/react-query";
+import { LuTrash2 } from "react-icons/lu";
 
 export function Sidebar({ className }: { className?: string }) {
   const [activeState, setActiveState] = useState<string>("");
@@ -44,6 +47,7 @@ export function Sidebar({ className }: { className?: string }) {
   >({});
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
 
   // TanStack Query hooks
   const { data: receivers = [], isLoading: isReceiversLoading } =
@@ -51,6 +55,7 @@ export function Sidebar({ className }: { className?: string }) {
     console.log("Receivers", receivers)
   const { data: groups = [] } = useGroups();
   const addUserMutation = useAddUser();
+  const deleteConversationMutation = useDeleteConversation();
   const createGroupMutation = useCreateGroup();
   const addGroupMemberMutation = useAddGroupMember();
   const [onlineSet, setOnlineSet] = useState<Set<string>>(new Set());
@@ -68,6 +73,19 @@ export function Sidebar({ className }: { className?: string }) {
     const unsub = subscribeOnlineUsers((ids) => setOnlineSet(ids));
     return () => unsub();
   }, []);
+
+  // Refresh conversations list on any incoming private message.
+  // This makes "unknown sender" chats appear immediately (WhatsApp-like).
+  useEffect(() => {
+    const onReceive = () => {
+      queryClient.invalidateQueries({ queryKey: ["receivers"] });
+    };
+
+    socket.on("receive_message", onReceive);
+    return () => {
+      socket.off("receive_message", onReceive);
+    };
+  }, [queryClient]);
 
   const handleAddUser = async () => {
     const payload = emailOrMobile.includes("@")
@@ -88,7 +106,7 @@ export function Sidebar({ className }: { className?: string }) {
         className
       )}
     >
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col min-h-0">
         {/* Header */}
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-start justify-between">
@@ -181,7 +199,7 @@ export function Sidebar({ className }: { className?: string }) {
         )}
 
         {/* Contacts List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {isReceiversLoading && (
             <div className="flex justify-center items-center py-8">
               <div className="flex items-center gap-2 text-slate-500">
@@ -204,12 +222,12 @@ export function Sidebar({ className }: { className?: string }) {
           )}
 
           {activeTab === "contacts" && receivers && receivers.length > 0 && (
-            <div className="p-2">
-              <div className="space-y-1 overflow-auto">
+            <div className="p-2 min-h-full">
+              <div className="space-y-1 h-full scroll-auto">
                 {receivers.map((receiver) => (
                   <div
                     key={receiver?._id}
-                    className={`relative w-full rounded-lg transition-all duration-200 ${
+                    className={`group relative w-full rounded-lg transition-all duration-200 ${
                       activeState === receiver?._id
                         ? "bg-blue-50 border border-blue-200"
                         : "hover:bg-slate-50"
@@ -259,6 +277,25 @@ export function Sidebar({ className }: { className?: string }) {
                           }`}
                         ></div>
                       </div>
+                      <button
+                        type="button"
+                        className="ml-2 hidden group-hover:inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Delete conversation"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (deleteConversationMutation.isPending) return;
+                          const ok = window.confirm(`Delete conversation with ${receiver?.name}?`);
+                          if (!ok) return;
+                          deleteConversationMutation.mutate(receiver._id, {
+                            onSuccess: () => {
+                              if (activeState === receiver._id) setActiveState("");
+                            },
+                          });
+                        }}
+                        aria-label="Delete conversation"
+                      >
+                        <LuTrash2 size={16} />
+                      </button>
                     </div>
                     {activeState === receiver?._id && (
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r-full"></div>

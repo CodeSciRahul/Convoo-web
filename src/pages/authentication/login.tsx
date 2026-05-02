@@ -14,6 +14,7 @@ import { LoginResponse, LoginFormInputs } from "@/types";
 import { FaEnvelope, FaCoffee, FaEyeSlash, FaEye } from "react-icons/fa";
 import iconImage from "@/assets/icon.png";
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 
 export function LoginForm({
   className,
@@ -56,13 +57,27 @@ export function LoginForm({
   };
 
   return (
-    <div
-      className={cn(
-        "flex items-center justify-center min-h-screen w-screen p-4 bg-gradient-to-br from-slate-50 to-slate-100",
-        className
-      )}
-      {...props}
-    >
+    <>
+      <Helmet>
+        <title>Login | Convoo</title>
+        <meta
+          name="description"
+          content="Login to Convoo to chat with friends and groups in real time."
+        />
+        <meta property="og:title" content="Login | Convoo" />
+        <meta
+          property="og:description"
+          content="Login to Convoo to chat with friends and groups in real time."
+        />
+        <meta property="og:type" content="website" />
+      </Helmet>
+      <div
+        className={cn(
+          "flex items-center justify-center min-h-screen w-screen p-4 bg-gradient-to-br from-slate-50 to-slate-100",
+          className
+        )}
+        {...props}
+      >
       <div className="w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden bg-white">
         <div className="md:flex flex-col-reverse md:flex-row-reverse min-h-[600px]">
           {/* Left Panel - Branding */}
@@ -186,6 +201,7 @@ export function LoginForm({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

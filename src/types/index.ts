@@ -138,6 +138,7 @@ export interface Message {
   messageType?: "private" | "group" | null
   replyTo?: Message | null
   reactions?: Reaction[] | null;
+  deleted?: boolean | null;
 }
 
 export interface ServerMessage {

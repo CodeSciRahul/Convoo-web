@@ -12,6 +12,7 @@ import { FaEnvelope, FaCoffee, FaEyeSlash, FaEye, FaUser, FaPhone } from "react-
 import iconImage from "@/assets/icon.png";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 
 export function SignupForm({
   className,
@@ -56,13 +57,27 @@ export function SignupForm({
   };
 
   return (
-    <div
-      className={cn(
-        "flex items-center justify-center min-h-screen w-screen p-4 bg-gradient-to-br from-slate-50 to-slate-100",
-        className
-      )}
-      {...props}
-    >
+    <>
+      <Helmet>
+        <title>Sign up | Convoo</title>
+        <meta
+          name="description"
+          content="Create a Convoo account and start chatting with friends and groups."
+        />
+        <meta property="og:title" content="Sign up | Convoo" />
+        <meta
+          property="og:description"
+          content="Create a Convoo account and start chatting with friends and groups."
+        />
+        <meta property="og:type" content="website" />
+      </Helmet>
+      <div
+        className={cn(
+          "flex items-center justify-center min-h-screen w-screen p-4 bg-gradient-to-br from-slate-50 to-slate-100",
+          className
+        )}
+        {...props}
+      >
       <div className="w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden bg-white">
         <div className="md:flex flex-col-reverse md:flex-row-reverse min-h-[600px]">
           {/* Left Panel - Branding */}
@@ -270,6 +285,7 @@ export function SignupForm({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

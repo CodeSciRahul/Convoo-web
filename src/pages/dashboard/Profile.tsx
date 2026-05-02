@@ -10,6 +10,7 @@ import { useUpdateProfile } from "@/hooks/useUsers";
 import { setUpdatedProfile, setTheme } from "@/Redux/feature/authSlice";
 import { AuthUser } from "@/types";
 import { Spinner } from "@/components/ui/spinner";
+import { Helmet } from "react-helmet-async";
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -75,8 +76,21 @@ const Profile: React.FC = () => {
     }
   };
 
+  const profileTitle = user?.name ? `${user.name} | Profile | Convoo` : "Profile | Convoo";
+  const profileDescription = user?.name
+    ? `Manage ${user.name}'s account settings on Convoo.`
+    : "Manage your account settings on Convoo.";
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <>
+      <Helmet>
+        <title>{profileTitle}</title>
+        <meta name="description" content={profileDescription} />
+        <meta property="og:title" content={profileTitle} />
+        <meta property="og:description" content={profileDescription} />
+        <meta property="og:type" content="website" />
+      </Helmet>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-slate-200 px-6 py-4">
         <div className="flex items-center gap-3">
@@ -388,7 +402,8 @@ const Profile: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

@@ -42,6 +42,10 @@ export function addUser(data: AddUserPayload){
 return http.post(`/users/receivers`, data)
 }
 
+export function deleteConversation(receiverId: string) {
+  return http.delete(`/users/receivers/${receiverId}`);
+}
+
 export function upload(data:any ){
     return http.post(`/upload`, data)
 }

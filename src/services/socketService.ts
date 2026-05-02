@@ -34,6 +34,7 @@ type SocketIncomingMessage = {
   messageType?: "private" | "group" | null;
   replyTo?: SocketReplyTo;
   reactions?: Reaction[] | null;
+  deleted?: boolean | null;
 };
 
 type SocketMessageStatusPayload =
@@ -41,7 +42,7 @@ type SocketMessageStatusPayload =
   | { messageIds: string[]; deliveredAt?: string | Date | null; seenAt?: string | Date | null };
 
 // Socket setup
-export const socket: Socket = io(properties.PUBLIC_SOCKET_BASE_URL, {
+export const socket: Socket = io(properties.PRIVATE_SOCKET_BASE_URL, {
   transports: ["websocket"],
   reconnection: true,
   reconnectionDelay: 1000,
@@ -232,12 +233,20 @@ export const socketHandlers = {
   markSeen: (payload: { messageIds: string[]; viewerId: string; otherUserId: string }) => {
     if (!socket.connected) return;
     socket.emit("message:seen", payload);
+  },
+
+  deleteMessage: (payload: { messageId: string; requesterId: string }) => {
+    if (!socket.connected) {
+      toast.error("Socket is not connected - Cannot delete message");
+      return;
+    }
+    socket.emit("message:delete", payload);
   }
 };
 
 // Socket event listeners setup
 export const setupSocketListeners = (
-  setMessages: React.Dispatch<React.SetStateAction<Message[]>>
+  setMessages: React.Dispatch<React.SetStateAction<any[]>>
 ) => {
   // Handle private messages
   socket.on("receive_message", (newMessage: SocketIncomingMessage) => {
@@ -254,6 +263,7 @@ export const setupSocketListeners = (
       seenAt: newMessage.seenAt ?? null,
       groupId: newMessage.groupId,
       messageType: newMessage.messageType,
+      deleted: newMessage.deleted ?? false,
       replyTo: newMessage.replyTo
         ? {
             _id: newMessage.replyTo._id,
@@ -304,6 +314,7 @@ export const setupSocketListeners = (
         seenAt: newMessage.seenAt ?? null,
         groupId: newMessage.groupId,
         messageType: newMessage.messageType,
+        deleted: newMessage.deleted ?? false,
         replyTo: newMessage.replyTo ? {
           _id: newMessage.replyTo._id,
           senderId: newMessage.replyTo.sender._id,
@@ -321,6 +332,25 @@ export const setupSocketListeners = (
         reactions: newMessage.reactions,
       },
     ]);
+  });
+
+  // Handle message deleted (soft delete)
+  socket.on("message:deleted", (payload: { messageId?: string }) => {
+    const id = payload?.messageId ? String(payload.messageId) : null;
+    if (!id) return;
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (String(m._id) !== id) return m;
+        return {
+          ...m,
+          deleted: true,
+          content: "",
+          fileUrl: undefined,
+          fileType: undefined,
+          reactions: [],
+        };
+      })
+    );
   });
 
   // Handle reaction added
@@ -403,4 +433,5 @@ export const cleanupSocketListeners = () => {
   socket.off("message_reaction_added");
   socket.off("message_reaction_removed");
   socket.off("message:status");
+  socket.off("message:deleted");
 }

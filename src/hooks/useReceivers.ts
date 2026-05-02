@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getReceivers, addUser } from '@/services/apiService';
+import { getReceivers, addUser, deleteConversation } from '@/services/apiService';
 import { Receivers } from '@/types';
 import toast from 'react-hot-toast';
 import { AxiosError } from 'axios';
@@ -30,6 +30,7 @@ export const useAddUser = () => {
     },
     onSuccess: (response) => {
       if (response?.data) {
+        console.log("Response", response);
         queryClient.invalidateQueries({ queryKey: ['receivers'] });
         toast.success(`${(response?.data as { message: string })?.message}`);
       }
@@ -37,6 +38,28 @@ export const useAddUser = () => {
     onError: (error: unknown) => {
       if (error instanceof AxiosError) {
         toast.error(`${error.response?.data?.message}`);
+      } else {
+        toast.error("An unexpected error occurred");
+      }
+    },
+  });
+};
+
+export const useDeleteConversation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (receiverId: string) => {
+      const response = await deleteConversation(receiverId);
+      return response;
+    },
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['receivers'] });
+      toast.success(`${(response?.data as { message?: string })?.message || "Conversation deleted"}`);
+    },
+    onError: (error: unknown) => {
+      if (error instanceof AxiosError) {
+        toast.error(`${error.response?.data?.message || "Failed to delete conversation"}`);
       } else {
         toast.error("An unexpected error occurred");
       }

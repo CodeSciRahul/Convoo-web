@@ -14,7 +14,7 @@ import {
   useUpdateGroup,
 } from "@/hooks/useGroups";
 import { FaPaperclip, FaReply, FaSmile, FaTimes } from "react-icons/fa";
-import { LuDelete } from "react-icons/lu";
+import { LuDelete, LuTrash2 } from "react-icons/lu";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Message, ServerMessage, GroupFormData, GroupMember } from "@/types";
 import { EmojiPicker } from "@/components/emojiPicker";
@@ -28,9 +28,12 @@ import { GroupInfoModal } from "@/components/modals/GroupInfoModal";
 import { GroupSettingsModal } from "@/components/modals/GroupSettingsModal";
 import { RemoveReactionModal } from "@/components/modals/RemoveReactionModal";
 import { ChatHeader } from "@/components/chat/ChatHeader";
+import { Helmet } from "react-helmet-async";
+
+type ChatMessage = Message & { deleted?: boolean | null };
 
 const Chat: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isFileUploading, setisFileUploading] = useState<boolean>(false);
@@ -51,7 +54,7 @@ const Chat: React.FC = () => {
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
     null
   );
-  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
+  const [replyToMessage, setReplyToMessage] = useState<ChatMessage | null>(null);
   const [selectedReaction, setSelectedReaction] = useState<Reaction[] | null>(
     null
   );
@@ -64,6 +67,57 @@ const Chat: React.FC = () => {
   const selectionType = useAppSelecter((state) => state?.cart.selectionType);
   const userId = useAppSelecter((state) => state.auth.user?._id);
   const userName = useAppSelecter((state) => state?.auth.user?.name);
+
+  const chatTitle =
+    selectionType === "group"
+      ? selectedReceiverName
+        ? `Group: ${selectedReceiverName} | Convoo`
+        : "Group chat | Convoo"
+      : selectedReceiverName
+        ? `Chat with ${selectedReceiverName} | Convoo`
+        : "Chat | Convoo";
+  
+  console.log("chatTitle", chatTitle);
+
+
+  const chatDescription =
+    selectionType === "group"
+      ? selectedReceiverName
+        ? `Chat in the “${selectedReceiverName}” group on Convoo.`
+        : "Chat with your groups on Convoo."
+      : selectedReceiverName
+        ? `Chat with ${selectedReceiverName} on Convoo.`
+        : "Chat with your contacts on Convoo.";
+
+  const toDayKey = (isoOrDate: string | Date) => {
+    const d = typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate;
+    if (Number.isNaN(d.getTime())) return "invalid";
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate()
+    ).padStart(2, "0")}`;
+  };
+
+  const dayLabel = (isoOrDate: string | Date) => {
+    const d = typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate;
+    if (Number.isNaN(d.getTime())) return "";
+
+    const now = new Date();
+    const todayKey = toDayKey(now);
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const yesterdayKey = toDayKey(yesterday);
+    const key = toDayKey(d);
+
+    if (key === todayKey) return "Today";
+    if (key === yesterdayKey) return "Yesterday";
+
+    return new Intl.DateTimeFormat(undefined, {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(d);
+  };
 
   const setMessageRef = (id: string) => (el: HTMLDivElement | null) => {
     selectedMsgRef.current[id] = el;
@@ -355,7 +409,15 @@ const Chat: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 to-slate-100">
+    <>
+      <Helmet>
+        <title>{chatTitle}</title>
+        <meta name="description" content={chatDescription} />
+        <meta property="og:title" content={chatTitle} />
+        <meta property="og:description" content={chatDescription} />
+        <meta property="og:type" content="website" />
+      </Helmet>
+      <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
       <ChatHeader
         selectedReceiverName={selectedReceiverName}
@@ -451,18 +513,35 @@ const Chat: React.FC = () => {
         )}
 
         {messages.map((msg, index) => (
-          <div
-            key={index}
-            ref={setMessageRef(msg._id)}
-            className={`flex cursor-pointer ${
-              msg?.senderId === userId ? "justify-end" : "justify-start"
-            }`}
-          >
+          <React.Fragment key={`${msg._id}_${index}`}>
+            {(() => {
+              const currentKey = toDayKey(msg.timestamp);
+              const prev = messages[index - 1];
+              const prevKey = prev ? toDayKey(prev.timestamp) : null;
+              const show = index === 0 || currentKey !== prevKey;
+              if (!show) return null;
+              const label = dayLabel(msg.timestamp);
+              if (!label) return null;
+              return (
+                <div className="flex justify-center py-2">
+                  <div className="px-3 py-1 rounded-full bg-slate-200/70 text-slate-700 text-xs font-medium shadow-sm">
+                    {label}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div
-              className={`flex items-center gap-2 group ${
-                msg?.senderId === userId ? "flex-row" : "flex-row-reverse"
+              ref={setMessageRef(msg._id)}
+              className={`flex cursor-pointer ${
+                msg?.senderId === userId ? "justify-end" : "justify-start"
               }`}
             >
+              <div
+                className={`flex items-center gap-2 group ${
+                  msg?.senderId === userId ? "flex-row" : "flex-row-reverse"
+                }`}
+              >
               <div className="hidden group-hover:block relative">
                 <Button
                   variant="ghost"
@@ -470,6 +549,7 @@ const Chat: React.FC = () => {
                   onClick={() => {
                     setReplyToMessage(msg);
                   }}
+                  disabled={!!msg.deleted}
                 >
                   <FaReply size={16} />
                 </Button>
@@ -480,9 +560,25 @@ const Chat: React.FC = () => {
                     setIsEmojiPickerOpen(!isEmojiPickerOpen);
                     setSelectedMessageId(msg._id);
                   }}
+                  disabled={!!msg.deleted}
                 >
                   <FaSmile size={16} />
                 </Button>
+                {msg?.senderId === userId && !msg.deleted && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (!userId) return;
+                      socketHandlers.deleteMessage({
+                        messageId: msg._id,
+                        requesterId: userId,
+                      });
+                    }}
+                  >
+                    <LuTrash2 size={16} />
+                  </Button>
+                )}
                 {isEmojiPickerOpen && selectedMessageId === msg._id && (
                   <div
                     ref={emojiPickerRef}
@@ -566,10 +662,16 @@ const Chat: React.FC = () => {
                       </p>
                     </div>
                   )}
-                  {msg?.content && (
-                    <p className="text-sm leading-relaxed">{msg.content}</p>
-                  )}
-                  {msg?.fileUrl && (
+                  <p className="text-sm leading-relaxed">
+                    {msg.deleted ? (
+                      <span className="italic opacity-80">
+                        This message was deleted
+                      </span>
+                    ) : (
+                      msg?.content
+                    )}
+                  </p>
+                  {!msg.deleted && msg?.fileUrl && (
                     <div className="mt-2">
                       {msg.fileType?.startsWith("image/") ? (
                         <img
@@ -652,6 +754,7 @@ const Chat: React.FC = () => {
               </div>
             </div>
           </div>
+          </React.Fragment>
         ))}
       </div>
 
@@ -769,7 +872,8 @@ const Chat: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

@@ -7,6 +7,7 @@ import { verifyUser } from "@/services/apiService";
 import { useSearchParams } from "react-router-dom";
 import { AxiosResponse } from 'axios';
 import { AxiosError } from "axios";
+import { Helmet } from "react-helmet-async";
 
 export const VerifyUserByEmailLink = () => {
   const navigate = useNavigate();
@@ -44,6 +45,20 @@ export const VerifyUserByEmailLink = () => {
 
   return (
     <>
+      <Helmet>
+        <title>Verify email | Convoo</title>
+        <meta
+          name="description"
+          content="Verify your Convoo account email to start chatting."
+        />
+        <meta property="og:title" content="Verify email | Convoo" />
+        <meta
+          property="og:description"
+          content="Verify your Convoo account email to start chatting."
+        />
+        <meta property="og:type" content="website" />
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       {isLoading && <p className="text-center"> Loading...</p>}
       <div className="fixed inset-0 flex justify-center items-center flex-col bg-black bg-opacity-50 z-20">
         {isverified !== null && (
